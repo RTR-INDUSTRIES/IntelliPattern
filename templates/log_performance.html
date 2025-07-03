@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Academic Pattern Detector</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- AOS for animations -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <!-- Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(120deg, #0F111A 60%, #16203A 100%);
+            min-height: 100vh;
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #5B83EB 0%, #1A3A7C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+        .glow {
+            box-shadow: 0 0 16px 2px #5B83EB55, 0 2px 8px #000a;
+        }
+        .neon-border {
+            border: 2px solid #5B83EB;
+            box-shadow: 0 0 12px #5B83EB99;
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.2s;
+        }
+        .nav-link::after {
+            content: '';
+            display: block;
+            height: 2px;
+            width: 0;
+            background: linear-gradient(90deg, #5B83EB, #1A3A7C);
+            transition: width 0.3s;
+            position: absolute;
+            left: 0; bottom: -4px;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .nav-link:hover {
+            color: #5B83EB;
+            text-shadow: 0 0 8px #5B83EB99;
+        }
+        .sticky-nav {
+            box-shadow: 0 2px 16px #0F111A99;
+            background: rgba(15,17,26,0.95);
+            backdrop-filter: blur(8px);
+        }
+        .form-card {
+            background: rgba(24,26,36,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(91,131,235,0.3);
+        }
+        .input-field {
+            background: rgba(35,43,70,0.8);
+            border: 1px solid rgba(91,131,235,0.3);
+            color: #E2E8F0;
+        }
+        .input-field:focus {
+            border-color: #5B83EB;
+            box-shadow: 0 0 0 3px rgba(91,131,235,0.1);
+        }
+        .input-field::placeholder {
+            color: #94A3B8;
+        }
+    </style>
+</head>
+<body class="relative text-white overflow-x-hidden min-h-screen">
+    <!-- Sticky Navbar -->
+    <nav id="mainNav" class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-8 py-4 transition-all duration-300 sticky-nav">
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-brain text-3xl text-blue-400"></i>
+            <span class="text-2xl font-extrabold gradient-text tracking-wide">Academic Pattern Detector</span>
+        </div>
+        <div class="flex items-center space-x-8">
+            <a href="{{ url_for('home') }}" class="nav-link text-lg font-medium">Home</a>
+            <a href="{{ url_for('dashboard') }}" class="nav-link text-lg font-medium">Dashboard</a>
+            <a href="{{ url_for('patterns') }}" class="nav-link text-lg font-medium">Patterns</a>
+            <a href="{{ url_for('ai_insights') }}" class="nav-link text-lg font-medium">AI Insights</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-32">
+        <!-- Header -->
+        <div class="mb-8 text-center" data-aos="fade-up">
+            <h1 class="text-4xl font-bold gradient-text mb-4">Log Performance</h1>
+            <p class="text-blue-100 text-lg">Record your test scores and academic achievements</p>
+        </div>
+
+        <!-- Form -->
+        <div class="form-card rounded-2xl shadow-2xl p-8 glow" data-aos="fade-up" data-aos-delay="200">
+            <form method="POST" class="space-y-6">
+                <!-- Subject -->
+                <div>
+                    <label for="subject" class="block text-sm font-medium text-blue-200 mb-2">
+                        <i class="fas fa-book mr-2 text-blue-400"></i>Subject
+                    </label>
+                    <input type="text" id="subject" name="subject" required
+                           class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300"
+                           placeholder="e.g., Mathematics, Physics, History">
+                </div>
+
+                <!-- Assessment Type -->
+                <div>
+                    <label for="assessment_type" class="block text-sm font-medium text-blue-200 mb-2">
+                        <i class="fas fa-clipboard-check mr-2 text-green-400"></i>Assessment Type
+                    </label>
+                    <select id="assessment_type" name="assessment_type" required
+                            class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300">
+                        <option value="">Select assessment type</option>
+                        <option value="Quiz">Quiz</option>
+                        <option value="Test">Test</option>
+                        <option value="Exam">Exam</option>
+                        <option value="Assignment">Assignment</option>
+                        <option value="Project">Project</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Lab Report">Lab Report</option>
+                        <option value="Essay">Essay</option>
+                        <option value="Midterm">Midterm</option>
+                        <option value="Final">Final</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Score Section -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="score" class="block text-sm font-medium text-blue-200 mb-2">
+                            <i class="fas fa-star mr-2 text-yellow-400"></i>Your Score
+                        </label>
+                        <input type="number" id="score" name="score" required min="0" step="0.1"
+                               class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300"
+                               placeholder="85">
+                    </div>
+                    
+                    <div>
+                        <label for="max_score" class="block text-sm font-medium text-blue-200 mb-2">
+                            <i class="fas fa-bullseye mr-2 text-red-400"></i>Maximum Score
+                        </label>
+                        <input type="number" id="max_score" name="max_score" required min="1" step="0.1"
+                               class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300"
+                               placeholder="100">
+                    </div>
+                    
+                    <div>
+                        <label for="percentage" class="block text-sm font-medium text-blue-200 mb-2">
+                            <i class="fas fa-percent mr-2 text-purple-400"></i>Percentage
+                        </label>
+                        <input type="text" id="percentage" name="percentage" readonly
+                               class="w-full px-4 py-3 rounded-lg input-field bg-opacity-50 cursor-not-allowed"
+                               placeholder="85%">
+                    </div>
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label for="date" class="block text-sm font-medium text-blue-200 mb-2">
+                        <i class="fas fa-calendar mr-2 text-indigo-400"></i>Date
+                    </label>
+                    <input type="date" id="date" name="date" required
+                           class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300">
+                </div>
+
+                <!-- Topics Covered -->
+                <div>
+                    <label for="topics_covered" class="block text-sm font-medium text-blue-200 mb-2">
+                        <i class="fas fa-list mr-2 text-orange-400"></i>Topics Covered (Optional)
+                    </label>
+                    <textarea id="topics_covered" name="topics_covered" rows="3"
+                              class="w-full px-4 py-3 rounded-lg input-field focus:outline-none transition-all duration-300 resize-none"
+                              placeholder="List the main topics or chapters covered in this assessment..."></textarea>
+                </div>
+
+                <!-- Performance Indicator -->
+                <div class="bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-6 rounded-xl border border-blue-500/30">
+                    <h3 class="text-xl font-bold text-blue-100 mb-4 text-center">Performance Indicator</h3>
+                    <div id="performance-indicator" class="text-center py-4">
+                        <div class="text-6xl mb-2">📊</div>
+                        <p class="text-blue-200">Enter your scores to see performance analysis</p>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-4">
+                    <a href="{{ url_for('dashboard') }}" 
+                       class="px-6 py-3 border border-blue-500/30 rounded-xl text-blue-200 hover:bg-blue-500/10 transition-all duration-300">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-300 glow">
+                        <i class="fas fa-save mr-2"></i>Record Performance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const scoreInput = document.getElementById('score');
+        const maxScoreInput = document.getElementById('max_score');
+        const percentageInput = document.getElementById('percentage');
+        const performanceIndicator = document.getElementById('performance-indicator');
+        const dateInput = document.getElementById('date');
+
+        // Set today's date as default
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+
+        function calculatePercentage() {
+            const score = parseFloat(scoreInput.value);
+            const maxScore = parseFloat(maxScoreInput.value);
+            
+            if (score && maxScore && maxScore > 0) {
+                const percentage = (score / maxScore) * 100;
+                percentageInput.value = percentage.toFixed(1) + '%';
+                
+                // Update performance indicator
+                updatePerformanceIndicator(percentage);
+            } else {
+                percentageInput.value = '';
+                resetPerformanceIndicator();
+            }
+        }
+
+        function updatePerformanceIndicator(percentage) {
+            let emoji, color, message, bgColor;
+            
+            if (percentage >= 90) {
+                emoji = '🏆';
+                color = 'text-yellow-400';
+                bgColor = 'bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/30';
+                message = 'Excellent! Outstanding performance!';
+            } else if (percentage >= 80) {
+                emoji = '🌟';
+                color = 'text-green-400';
+                bgColor = 'bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-500/30';
+                message = 'Great job! Very good performance!';
+            } else if (percentage >= 70) {
+                emoji = '👍';
+                color = 'text-blue-400';
+                bgColor = 'bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-500/30';
+                message = 'Good work! Above average performance!';
+            } else if (percentage >= 60) {
+                emoji = '📈';
+                color = 'text-orange-400';
+                bgColor = 'bg-gradient-to-r from-orange-900/30 to-red-900/30 border-orange-500/30';
+                message = 'Keep improving! Room for growth!';
+            } else {
+                emoji = '💪';
+                color = 'text-red-400';
+                bgColor = 'bg-gradient-to-r from-red-900/30 to-pink-900/30 border-red-500/30';
+                message = 'Keep working hard! You can do better!';
+            }
+            
+            performanceIndicator.className = `text-center py-4 rounded-xl border ${bgColor}`;
+            performanceIndicator.innerHTML = `
+                <div class="text-6xl mb-2">${emoji}</div>
+                <div class="text-2xl font-bold ${color} mb-1">${percentage.toFixed(1)}%</div>
+                <p class="${color} font-medium">${message}</p>
+            `;
+        }
+
+        function resetPerformanceIndicator() {
+            performanceIndicator.className = 'text-center py-4';
+            performanceIndicator.innerHTML = `
+                <div class="text-6xl mb-2">📊</div>
+                <p class="text-blue-200">Enter your scores to see performance analysis</p>
+            `;
+        }
+
+        scoreInput.addEventListener('input', calculatePercentage);
+        maxScoreInput.addEventListener('input', calculatePercentage);
+        
+        // AOS animation init
+        AOS.init({
+            duration: 600,
+            easing: 'ease-out',
+            once: true
+        });
+    </script>
+</body>
+</html>
