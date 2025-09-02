@@ -1,6 +1,23 @@
 # IntelliPattern - Academic Performance Pattern Detector
 
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_Website-blue?style=for-the-badge)](https://intelli-pattern-5z9l.vercel.app/)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-black?style=flat&logo=vercel)](https://intelli-pattern-5z9l.vercel.app/)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?style=flat&logo=python)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-2.3+-green?style=flat&logo=flask)](https://flask.palletsprojects.com/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue?style=flat&logo=postgresql)](https://postgresql.org)
+
 A comprehensive web application that helps students optimize their learning by tracking study habits, analyzing wellness patterns, and providing AI-powered insights for academic success.
+
+## 🌐 Live Application
+
+**✨ [Check Live Demo](https://intelli-pattern-5z9l.vercel.app/) ✨**
+
+Experience the full IntelliPattern application with:
+- User registration and authentication
+- Study session tracking
+- AI-powered insights with Google Gemini
+- Performance analytics and data visualization
+- Wellness monitoring dashboard
 
 ## Project Overview
 
