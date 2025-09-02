@@ -17,17 +17,7 @@ app = Flask(__name__)
 
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
-
-# Database configuration - handle both PostgreSQL and SQLite
-database_url = os.getenv('DATABASE_URL')
-if database_url and database_url.startswith('postgresql://'):
-    # For production with PostgreSQL
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-else:
-    # For local development with SQLite
-    os.makedirs('instance', exist_ok=True)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-    
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///instance/app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -195,7 +185,7 @@ def login():
             db.session.commit()
             
             next_page = request.args.get('next')
-            flash(f'Welcome back! 🎉', 'success')
+            flash(f'Welcome back, {user.email}! 🎉', 'success')
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
             flash('Invalid email or password. Please try again.', 'error')
@@ -253,7 +243,6 @@ def dashboard():
                          avg_focus=round(float(avg_focus), 1) if avg_focus else 0)
 
 @app.route('/log-study', methods=['GET', 'POST'])
-@login_required
 def log_study():
     if request.method == 'POST':
         # Get form data
@@ -266,29 +255,135 @@ def log_study():
         focus_rating = int(request.form['focus_rating'])
         notes = request.form.get('notes', '')
         
-        # Create new study session for current user
-        session = StudySession(
-            user_id=current_user.id,
-            subject=subject,
-            duration=duration,
-            start_time=start_time,
-            end_time=end_time,
-            study_method=study_method,
-            difficulty_level=difficulty_level,
-            focus_rating=focus_rating,
-            notes=notes
-        )
-        
-        db.session.add(session)
-        db.session.commit()
+        # Insert into database
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO study_sessions 
+            (subject, duration, start_time, end_time, study_method, difficulty_level, focus_rating, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (subject, duration, start_time, end_time, study_method, difficulty_level, focus_rating, notes))
+        conn.commit()
+        conn.close()
         
         flash('Study session logged successfully! 📚', 'success')
         return redirect(url_for('dashboard'))
     
     return render_template('log_study.html', title='Log Study Session')
 
+@app.route('/patterns')
+def patterns():
+    """Analyze patterns in study data"""
+    conn = get_db_connection()
+    
+    # Get correlation between focus rating and study duration
+    focus_data = conn.execute('''
+        SELECT focus_rating, AVG(duration) as avg_duration 
+        FROM study_sessions 
+        GROUP BY focus_rating
+        ORDER BY focus_rating
+    ''').fetchall()
+    
+    # Get best performing subjects
+    subject_performance = conn.execute('''
+        SELECT s.subject, AVG(s.focus_rating) as avg_focus, 
+               COUNT(s.id) as session_count,
+               SUM(s.duration) as total_minutes
+        FROM study_sessions s
+        GROUP BY s.subject
+        HAVING session_count >= 2
+        ORDER BY avg_focus DESC
+    ''').fetchall()
+    
+    # Get wellness correlation (if data exists)
+    wellness_study_correlation = conn.execute('''
+        SELECT w.sleep_hours, w.stress_level, AVG(s.focus_rating) as avg_focus
+        FROM wellness_tracking w
+        JOIN study_sessions s ON DATE(w.date) = DATE(s.created_at)
+        GROUP BY w.sleep_hours, w.stress_level
+        HAVING COUNT(*) >= 2
+    ''').fetchall()
+    
+    conn.close()
+    
+    patterns = []
+    
+    # Analyze focus patterns
+    if focus_data:
+        high_focus_sessions = [row for row in focus_data if row['focus_rating'] >= 4]
+        if high_focus_sessions:
+            avg_duration = sum(row['avg_duration'] for row in high_focus_sessions) / len(high_focus_sessions)
+            patterns.append({
+                'title': '🎯 High Focus Sessions',
+                'description': f'Your high-focus sessions (4-5 rating) average {avg_duration:.0f} minutes',
+                'recommendation': 'Try to replicate conditions that lead to high focus sessions!',
+                'type': 'positive'
+            })
+    
+    # Analyze subject performance
+    if subject_performance:
+        best_subject = subject_performance[0]
+        patterns.append({
+            'title': f'📚 Top Subject: {best_subject["subject"]}',
+            'description': f'Average focus rating: {best_subject["avg_focus"]:.1f}/5 ({best_subject["session_count"]} sessions)',
+            'recommendation': f'You focus well on {best_subject["subject"]}. Apply similar techniques to other subjects.',
+            'type': 'insight'
+        })
+        
+        # Check for struggling subjects
+        if len(subject_performance) > 1:
+            struggling_subject = subject_performance[-1]
+            if struggling_subject['avg_focus'] < 3.0:
+                patterns.append({
+                    'title': f'⚠️ Needs Attention: {struggling_subject["subject"]}',
+                    'description': f'Average focus rating: {struggling_subject["avg_focus"]:.1f}/5',
+                    'recommendation': f'Try different study methods for {struggling_subject["subject"]} or study it when you\'re most alert.',
+                    'type': 'warning'
+                })
+    
+    # Analyze wellness correlation
+    if wellness_study_correlation:
+        high_sleep_focus = [row for row in wellness_study_correlation if row['sleep_hours'] >= 7]
+        if high_sleep_focus:
+            avg_focus_good_sleep = sum(row['avg_focus'] for row in high_sleep_focus) / len(high_sleep_focus)
+            patterns.append({
+                'title': '😴 Sleep & Focus Connection',
+                'description': f'With 7+ hours sleep, your average focus is {avg_focus_good_sleep:.1f}/5',
+                'recommendation': 'Prioritize getting enough sleep for better study sessions!',
+                'type': 'insight'
+            })
+    
+    # If no patterns found
+    if not patterns:
+        patterns.append({
+            'title': '📊 Getting Started',
+            'description': 'Keep logging your study sessions to discover your personal learning patterns!',
+            'recommendation': 'Try logging at least 5-10 study sessions to see meaningful insights.',
+            'type': 'info'
+        })
+    
+    return render_template('patterns.html', title='Pattern Analysis', patterns=patterns)
+
+@app.route('/ai-insights')
+def ai_insights():
+    """Display AI-powered insights"""
+    print("🤖 Generating AI insights...")
+    insight = get_ai_insights()
+    
+    # Get data point count for display
+    conn = get_db_connection()
+    data_points = (
+        conn.execute('SELECT COUNT(*) as count FROM study_sessions').fetchone()['count'] +
+        conn.execute('SELECT COUNT(*) as count FROM performance_records').fetchone()['count'] +
+        conn.execute('SELECT COUNT(*) as count FROM wellness_tracking').fetchone()['count']
+    )
+    conn.close()
+    
+    return render_template('ai_insights.html', 
+                         title='AI Insights',
+                         insight=insight,
+                         data_points=data_points)
+
 @app.route('/log-performance', methods=['GET', 'POST'])
-@login_required
 def log_performance():
     if request.method == 'POST':
         subject = request.form['subject']
@@ -298,19 +393,14 @@ def log_performance():
         date = request.form['date']
         topics_covered = request.form.get('topics_covered', '')
         
-        # Create new performance record for current user
-        record = PerformanceRecord(
-            user_id=current_user.id,
-            subject=subject,
-            assessment_type=assessment_type,
-            score=score,
-            max_score=max_score,
-            date=date,
-            topics_covered=topics_covered
-        )
-        
-        db.session.add(record)
-        db.session.commit()
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO performance_records 
+            (subject, assessment_type, score, max_score, date, topics_covered)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (subject, assessment_type, score, max_score, date, topics_covered))
+        conn.commit()
+        conn.close()
         
         flash('Performance record added successfully! 📈', 'success')
         return redirect(url_for('dashboard'))
@@ -318,7 +408,6 @@ def log_performance():
     return render_template('log_performance.html', title='Log Performance')
 
 @app.route('/log-wellness', methods=['GET', 'POST'])
-@login_required
 def log_wellness():
     if request.method == 'POST':
         date = request.form['date']
@@ -329,199 +418,75 @@ def log_wellness():
         caffeine_intake = int(request.form.get('caffeine_intake', 0))
         notes = request.form.get('notes', '')
         
-        # Create new wellness entry for current user
-        wellness = WellnessTracking(
-            user_id=current_user.id,
-            date=date,
-            sleep_hours=sleep_hours,
-            stress_level=stress_level,
-            mood_rating=mood_rating,
-            exercise_minutes=exercise_minutes,
-            caffeine_intake=caffeine_intake,
-            notes=notes
-        )
-        
-        db.session.add(wellness)
-        db.session.commit()
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO wellness_tracking 
+            (date, sleep_hours, stress_level, mood_rating, exercise_minutes, caffeine_intake, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (date, sleep_hours, stress_level, mood_rating, exercise_minutes, caffeine_intake, notes))
+        conn.commit()
+        conn.close()
         
         flash('Wellness data logged successfully! 💪', 'success')
         return redirect(url_for('dashboard'))
     
     return render_template('log_wellness.html', title='Log Wellness')
 
-@app.route('/patterns')
-@login_required
-def patterns():
-    """Analyze patterns in current user's study data"""
-    patterns = []
-    
-    # Get user's study sessions
-    study_sessions = StudySession.query.filter_by(user_id=current_user.id).all()
-    
-    if len(study_sessions) < 2:
-        patterns.append({
-            'title': '📊 Getting Started',
-            'description': 'Keep logging your study sessions to discover your personal learning patterns!',
-            'recommendation': 'Try logging at least 5-10 study sessions to see meaningful insights.',
-            'type': 'info'
-        })
-    else:
-        # Analyze focus patterns
-        high_focus_sessions = [s for s in study_sessions if s.focus_rating >= 4]
-        if high_focus_sessions:
-            avg_duration = sum(s.duration for s in high_focus_sessions) / len(high_focus_sessions)
-            patterns.append({
-                'title': '🎯 High Focus Sessions',
-                'description': f'Your high-focus sessions (4-5 rating) average {avg_duration:.0f} minutes',
-                'recommendation': 'Try to replicate conditions that lead to high focus sessions!',
-                'type': 'positive'
-            })
-        
-        # Analyze subject performance
-        subjects = {}
-        for session in study_sessions:
-            if session.subject not in subjects:
-                subjects[session.subject] = {'sessions': [], 'focus_sum': 0, 'count': 0}
-            subjects[session.subject]['sessions'].append(session)
-            subjects[session.subject]['focus_sum'] += session.focus_rating
-            subjects[session.subject]['count'] += 1
-        
-        if subjects:
-            # Find best subject
-            best_subject = max(subjects.items(), key=lambda x: x[1]['focus_sum'] / x[1]['count'])
-            if best_subject[1]['count'] >= 2:
-                avg_focus = best_subject[1]['focus_sum'] / best_subject[1]['count']
-                patterns.append({
-                    'title': f'📚 Top Subject: {best_subject[0]}',
-                    'description': f'Average focus rating: {avg_focus:.1f}/5 ({best_subject[1]["count"]} sessions)',
-                    'recommendation': f'You focus well on {best_subject[0]}. Apply similar techniques to other subjects.',
-                    'type': 'insight'
-                })
-    
-    return render_template('patterns.html', title='Pattern Analysis', patterns=patterns)
-
-@app.route('/ai-insights')
-@login_required
-def ai_insights():
-    """Display AI-powered insights"""
-    print("🤖 Generating AI insights...")
-    insight = get_ai_insights()
-    
-    # Get data point count for display
-    data_points = (
-        StudySession.query.filter_by(user_id=current_user.id).count() +
-        PerformanceRecord.query.filter_by(user_id=current_user.id).count() +
-        WellnessTracking.query.filter_by(user_id=current_user.id).count()
-    )
-    
-    return render_template('ai_insights.html', 
-                         title='AI Insights',
-                         insight=insight,
-                         data_points=data_points)
-
 @app.route('/api/study-data')
-@login_required
 def api_study_data():
-    """API endpoint to get current user's study data for charts"""
-    # Get study hours by subject for current user
-    subject_query = db.session.query(
-        StudySession.subject,
-        db.func.sum(StudySession.duration).label('total_minutes')
-    ).filter_by(user_id=current_user.id).group_by(StudySession.subject).all()
+    """API endpoint to get study data for charts"""
+    conn = get_db_connection()
     
-    # Get daily study hours for last 7 days for current user
-    from sqlalchemy import text
-    daily_query = db.session.query(
-        db.func.date(StudySession.created_at).label('date'),
-        db.func.sum(StudySession.duration).label('total_minutes')
-    ).filter_by(user_id=current_user.id).filter(
-        StudySession.created_at >= text("datetime('now', '-7 days')")
-    ).group_by(db.func.date(StudySession.created_at)).order_by('date').all()
+    # Get study hours by subject
+    subject_data = conn.execute('''
+        SELECT subject, SUM(duration) as total_minutes 
+        FROM study_sessions 
+        GROUP BY subject
+    ''').fetchall()
+    
+    # Get daily study hours for last 7 days
+    daily_data = conn.execute('''
+        SELECT DATE(created_at) as date, SUM(duration) as total_minutes
+        FROM study_sessions 
+        WHERE created_at >= datetime('now', '-7 days')
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    ''').fetchall()
+    
+    conn.close()
     
     return jsonify({
-        'subjects': [{'subject': row.subject, 'hours': round(row.total_minutes/60, 1)} for row in subject_query],
-        'daily': [{'date': str(row.date), 'hours': round(row.total_minutes/60, 1)} for row in daily_query]
+        'subjects': [{'subject': row['subject'], 'hours': round(row['total_minutes']/60, 1)} for row in subject_data],
+        'daily': [{'date': row['date'], 'hours': round(row['total_minutes']/60, 1)} for row in daily_data]
     })
 
 @app.route('/delete-study-session/<int:session_id>', methods=['POST'])
-@login_required
 def delete_study_session(session_id):
-    session = StudySession.query.filter_by(id=session_id, user_id=current_user.id).first()
-    if session:
-        db.session.delete(session)
-        db.session.commit()
-        flash('Study session deleted successfully!', 'success')
+    conn = get_db_connection()
+    conn.execute('DELETE FROM study_sessions WHERE id = ?', (session_id,))
+    conn.commit()
+    conn.close()
+    flash('Study session deleted successfully!', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/delete-performance-record/<int:record_id>', methods=['POST'])
-@login_required
 def delete_performance_record(record_id):
-    record = PerformanceRecord.query.filter_by(id=record_id, user_id=current_user.id).first()
-    if record:
-        db.session.delete(record)
-        db.session.commit()
-        flash('Performance record deleted successfully!', 'success')
+    conn = get_db_connection()
+    conn.execute('DELETE FROM performance_records WHERE id = ?', (record_id,))
+    conn.commit()
+    conn.close()
+    flash('Performance record deleted successfully!', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/delete-wellness-entry/<int:entry_id>', methods=['POST'])
-@login_required
 def delete_wellness_entry(entry_id):
-    entry = WellnessTracking.query.filter_by(id=entry_id, user_id=current_user.id).first()
-    if entry:
-        db.session.delete(entry)
-        db.session.commit()
-        flash('Wellness entry deleted successfully!', 'success')
+    conn = get_db_connection()
+    conn.execute('DELETE FROM wellness_tracking WHERE id = ?', (entry_id,))
+    conn.commit()
+    conn.close()
+    flash('Wellness entry deleted successfully!', 'success')
     return redirect(url_for('dashboard'))
 
-@app.route('/delete-account', methods=['GET', 'POST'])
-@login_required
-def delete_account():
-    """Allow users to delete their account and all associated data"""
-    if request.method == 'POST':
-        # Verify password before deletion
-        password = request.form.get('password', '')
-        if not current_user.check_password(password):
-            flash('Incorrect password. Account deletion cancelled.', 'error')
-            return render_template('delete_account.html', title='Delete Account')
-        
-        # Get confirmation
-        confirmation = request.form.get('confirmation', '')
-        if confirmation.lower() != 'delete my account':
-            flash('Please type "DELETE MY ACCOUNT" exactly to confirm deletion.', 'error')
-            return render_template('delete_account.html', title='Delete Account')
-        
-        try:
-            # Store user email for farewell message
-            user_email = current_user.email
-            
-            # Logout user first
-            logout_user()
-            
-            # Delete user account (cascade will handle related data)
-            user_to_delete = User.query.filter_by(email=user_email).first()
-            if user_to_delete:
-                db.session.delete(user_to_delete)
-                db.session.commit()
-                
-                flash('Your account and all associated data have been permanently deleted. We\'re sorry to see you go! 👋', 'info')
-                return redirect(url_for('home'))
-            else:
-                flash('Account not found. Please contact support.', 'error')
-                return redirect(url_for('home'))
-                
-        except Exception as e:
-            db.session.rollback()
-            flash('An error occurred while deleting your account. Please try again or contact support.', 'error')
-            print(f"Account deletion error: {str(e)}")
-            return redirect(url_for('dashboard'))
-    
-    # GET request - show confirmation page
-    return render_template('delete_account.html', title='Delete Account')
-
 if __name__ == '__main__':
-    # Create database tables
-    with app.app_context():
-        db.create_all()
-        print("✅ Database tables created successfully!")
-    
+    init_db()  # Initialize database when app starts
     app.run(debug=True)

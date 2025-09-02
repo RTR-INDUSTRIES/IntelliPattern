@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title or 'Academic Performance Detector' }}</title>
+    <title>{{ title or 'IntelliPattern' }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -88,14 +91,21 @@
     <!-- Sticky Navbar -->
     <nav id="mainNav" class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-8 py-4 transition-all duration-300">
         <div class="flex items-center space-x-3">
-            <i class="fas fa-brain text-3xl text-blue-400"></i>
-            <span class="text-2xl font-extrabold gradient-text tracking-wide">Academic Pattern Detector</span>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="IntelliPattern Logo" class="w-10 h-10">
+            <span class="text-2xl font-extrabold gradient-text tracking-wide">IntelliPattern</span>
         </div>
         <div class="flex items-center space-x-8">
             <a href="/" class="nav-link text-lg font-medium">Home</a>
-            <a href="/dashboard" class="nav-link text-lg font-medium">Dashboard</a>
-            <a href="/patterns" class="nav-link text-lg font-medium">Patterns</a>
-            <a href="/ai-insights" class="nav-link text-lg font-medium">AI Insights</a>
+            {% if current_user.is_authenticated %}
+                <a href="/dashboard" class="nav-link text-lg font-medium">Dashboard</a>
+                <a href="/patterns" class="nav-link text-lg font-medium">Patterns</a>
+                <a href="/ai-insights" class="nav-link text-lg font-medium">AI Insights</a>
+                <span class="text-blue-200 text-sm">{{ current_user.email }}</span>
+                <a href="/logout" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition-colors">Logout</a>
+            {% else %}
+                <a href="/login" class="nav-link text-lg font-medium">Login</a>
+                <a href="/register" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors">Sign Up</a>
+            {% endif %}
         </div>
     </nav>
 
@@ -162,7 +172,8 @@
 
     <!-- Footer -->
     <footer class="w-full text-center py-8 mt-16 text-blue-200 text-sm bg-[#0A0C14]">
-        &copy; 2025 Academic Pattern Detector. Inspired by Google AI. Built with <span class="text-blue-400">&#10084;&#65039;</span> for better learning.
+        Made with <span class="text-blue-400">&#10084;&#65039;</span> by <strong>Abhinaba Paul</strong><br>
+        <span class="text-blue-300">Computer Science Student at VIT, Vellore</span>
     </footer>
 
     <script>

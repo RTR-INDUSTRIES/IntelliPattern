@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Academic Pattern Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-graph-up"></i> Academic Pattern Detector
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message|safe }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Delete Account
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning" role="alert">
+                            <h5><i class="bi bi-exclamation-triangle"></i> Warning: This Action Cannot Be Undone!</h5>
+                            <p class="mb-0">Deleting your account will permanently remove:</p>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="text-danger">
+                                    <h6><i class="bi bi-trash"></i> Data to be Deleted:</h6>
+                                    <ul class="list-unstyled ms-3">
+                                        <li><i class="bi bi-person-x"></i> Your account and profile</li>
+                                        <li><i class="bi bi-journal-x"></i> All study sessions</li>
+                                        <li><i class="bi bi-graph-down"></i> Performance records</li>
+                                        <li><i class="bi bi-heart-pulse"></i> Wellness tracking data</li>
+                                        <li><i class="bi bi-robot"></i> AI insights and patterns</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-info">
+                                    <h6><i class="bi bi-download"></i> Before You Delete:</h6>
+                                    <ul class="list-unstyled ms-3">
+                                        <li><i class="bi bi-file-earmark-arrow-down"></i> Export your data if needed</li>
+                                        <li><i class="bi bi-camera"></i> Take screenshots of insights</li>
+                                        <li><i class="bi bi-clipboard-check"></i> Save important patterns</li>
+                                        <li><i class="bi bi-pause-circle"></i> Consider taking a break instead</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <form method="POST" onsubmit="return confirmDeletion()">
+                            <div class="mb-4">
+                                <label for="password" class="form-label">
+                                    <strong>Enter your password to confirm:</strong>
+                                </label>
+                                <input type="password" class="form-control form-control-lg" id="password" name="password" required
+                                       placeholder="Your current password">
+                                <div class="form-text">We need to verify your identity before account deletion.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="confirmation" class="form-label">
+                                    <strong>Type "DELETE MY ACCOUNT" to confirm:</strong>
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="confirmation" name="confirmation" required
+                                       placeholder="DELETE MY ACCOUNT">
+                                <div class="form-text">This phrase must be typed exactly as shown above.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="understand" required>
+                                    <label class="form-check-label" for="understand">
+                                        <strong>I understand that this action cannot be undone and all my data will be permanently lost.</strong>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-danger btn-lg">
+                                    <i class="bi bi-trash3-fill"></i>
+                                    Permanently Delete My Account
+                                </button>
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-lg">
+                                    <i class="bi bi-arrow-left"></i>
+                                    Cancel and Keep My Account
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Alternative options -->
+                <div class="card mt-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Need a Break Instead?</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>If you're feeling overwhelmed or just need time away, consider these alternatives:</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <button class="btn btn-outline-info" onclick="exportData()">
+                                        <i class="bi bi-download"></i> Export My Data
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-box-arrow-right"></i> Just Log Out
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function confirmDeletion() {
+            const password = document.getElementById('password').value;
+            const confirmation = document.getElementById('confirmation').value;
+            const understand = document.getElementById('understand').checked;
+
+            if (!password) {
+                alert('Please enter your password.');
+                return false;
+            }
+
+            if (confirmation !== 'DELETE MY ACCOUNT') {
+                alert('Please type "DELETE MY ACCOUNT" exactly as shown.');
+                return false;
+            }
+
+            if (!understand) {
+                alert('Please check the confirmation checkbox.');
+                return false;
+            }
+
+            return confirm('⚠️ FINAL WARNING: This will permanently delete your account and ALL your data. This cannot be undone. Are you absolutely sure?');
+        }
+
+        function exportData() {
+            // Placeholder for future data export feature
+            alert('📊 Data export feature coming soon! For now, you can take screenshots of your insights and patterns pages.');
+        }
+    </script>
+</body>
+</html>
